@@ -239,7 +239,10 @@ ul {
   margin:0 auto;
   text-align: center;
 }
-
+span{
+  font-weight: bold;
+  font-style: italic;
+}
 .section-center{
   display:grid;
   gap:2rem;

@@ -1,8 +1,7 @@
 import { useGlobalContext } from '../context';
 import { BsHandThumbsUp } from 'react-icons/bs';
 export default function Meals() {
-   const { isLoading, meals, noMeals } = useGlobalContext();
-   console.log(meals);
+   const { isLoading, meals, noMeals, searchTerm } = useGlobalContext();
    return (
       <div>
          {isLoading && (
@@ -11,14 +10,16 @@ export default function Meals() {
             </section>
          )}
          {noMeals && (
-            <section className='section'>
+            <section className="section">
                <h4>
-                  No meals matched your search term. Please try another meal.
+                  No meals matched with name <span>{searchTerm}</span>. Please
+                  try another meal.
                </h4>
             </section>
          )}
          <section className="section-center">
             {meals &&
+               !noMeals &&
                meals.map((meal) => {
                   return (
                      <article key={meal.idMeal} className="single-meal">
