@@ -341,4 +341,7 @@ cursor:pointer;
 .close-btn{
   background:var(--red-dark);
   color:var(--white);
+  margin-left: 1.5rem;
+  /* padding: 0.5rem; */
+  margin-bottom: 1.5rem;
 }

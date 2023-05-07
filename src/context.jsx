@@ -10,6 +10,8 @@ const AppProvider = ({ children }) => {
    const [searchTerm, setSearchTerm] = useState('');
    const [noMeals, setNoMeals] = useState(false);
    const [isLoading, setIsLoading] = useState(false);
+   const [showModal, setShowModal] = useState(false);
+   const [selectedMeal, setSelectedMeal] = useState(null);
    const fetchMeals = async (url) => {
       setIsLoading(true);
       try {
@@ -24,23 +26,47 @@ const AppProvider = ({ children }) => {
       }
       setIsLoading(false);
    };
-   const fetchRandomMeal = () =>{
-      fetchMeals(randomMeals)
-   } 
+   const fetchRandomMeal = () => {
+      fetchMeals(randomMeals);
+   };
    // all meals url is fetched only when app is loaded or first time render
-   useEffect(() =>{
-      console.log('all meals url is fetched ....')
-      fetchMeals(allMeals)
-   }, [])
+   useEffect(() => {
+      fetchMeals(allMeals);
+   }, []);
    //! can share value to every component directly
-   useEffect(() => {  
-      if (!searchTerm) return
-      console.log("search meals url is fetched..")
+   useEffect(() => {
+      if (!searchTerm) return;
+      console.log('search meals url is fetched..');
       fetchMeals(`${allMeals}${searchTerm}`);
    }, [searchTerm]);
+   // invoke when users clicked on single Meal
+   const clickOnMeal = (id, favMeal) => {
+      let meal = meals.find((m) => m.idMeal === id);
+      console.log(meal);
+      setSelectedMeal(meal);
+      setShowModal(true);
+   };
+   // to toggle modal or close modal
+   const closeModal = () => {
+      setShowModal(false);
+      setSelectedMeal(null)
+   };
    // this return is from AppProvider function
    return (
-      <AppContext.Provider value={{ isLoading, meals, noMeals, setSearchTerm, searchTerm, fetchRandomMeal }}>
+      <AppContext.Provider
+         value={{
+            isLoading,
+            meals,
+            noMeals,
+            setSearchTerm,
+            searchTerm,
+            fetchRandomMeal,
+            showModal,
+            selectedMeal,
+            clickOnMeal,
+            closeModal,
+         }}
+      >
          {children}
       </AppContext.Provider>
    );
