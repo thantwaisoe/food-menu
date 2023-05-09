@@ -12,6 +12,7 @@ const AppProvider = ({ children }) => {
    const [isLoading, setIsLoading] = useState(false);
    const [showModal, setShowModal] = useState(false);
    const [selectedMeal, setSelectedMeal] = useState(null);
+   const [favorite, setFavorite] = useState(JSON.parse(localStorage.getItem('favorite-meals'))||[])
    const fetchMeals = async (url) => {
       setIsLoading(true);
       try {
@@ -26,6 +27,23 @@ const AppProvider = ({ children }) => {
       }
       setIsLoading(false);
    };
+   const addToFavorite = (idMeal) =>{
+      //check meal is already exist in list
+      let checkMeal = favorite.find(found => found.idMeal === idMeal)
+      if(checkMeal) return
+      let foundMeal = meals.find(eachMeal => eachMeal.idMeal === idMeal)
+      let toAddFavorite = [...favorite, foundMeal]
+      setFavorite(toAddFavorite)
+      //add local Storage
+      localStorage.setItem('favorite-meals', JSON.stringify(toAddFavorite))
+
+   }
+   const removeFromFavorite = (id) =>{
+      const updateFavorite = favorite.filter(found => found.idMeal !== id)
+      setFavorite(updateFavorite)
+      // update local Storage
+      localStorage.setItem('favorite-meals',JSON.stringify(updateFavorite))
+   }
    const fetchRandomMeal = () => {
       fetchMeals(randomMeals);
    };
@@ -41,8 +59,12 @@ const AppProvider = ({ children }) => {
    }, [searchTerm]);
    // invoke when users clicked on single Meal
    const clickOnMeal = (id, favMeal) => {
-      let meal = meals.find((m) => m.idMeal === id);
-      console.log(meal);
+      let meal;
+      if(favMeal){
+         meal = favorite.map(fav => fav.idMeal === id)
+      }else{
+         meal = meals.find((m) => m.idMeal === id);
+      }
       setSelectedMeal(meal);
       setShowModal(true);
    };
@@ -65,6 +87,9 @@ const AppProvider = ({ children }) => {
             selectedMeal,
             clickOnMeal,
             closeModal,
+            addToFavorite,
+            favorite,
+            removeFromFavorite
          }}
       >
          {children}

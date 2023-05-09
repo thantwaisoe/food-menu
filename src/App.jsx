@@ -6,11 +6,11 @@ import Search from './components/Search'
 import { useGlobalContext } from './context';
 
 export default function App() {
-  const {showModal} = useGlobalContext()
+  const {showModal, favorite} = useGlobalContext()
   return (
     <main>
       <Search />
-      {/* <Favorites/> */}
+      {favorite&& favorite.length> 0 && <Favorites/>}
       <Meals />
      {showModal &&  <Modal /> }
 
