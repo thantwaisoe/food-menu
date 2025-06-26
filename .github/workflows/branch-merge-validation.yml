@@ -1,0 +1,69 @@
+name: Branch Merge Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  validate-merge-source:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate staging merge sources
+      if: github.base_ref == 'staging'
+      run: |
+        source_branch="${{ github.head_ref }}"
+        if [[ ! $source_branch =~ ^release/ ]]; then
+          echo "❌ ERROR: staging branch can only accept merges from release/* branches"
+          echo "   Source branch: $source_branch"
+          echo "   Allowed patterns: release/*"
+          exit 1
+        fi
+        echo "✅ Valid: $source_branch can merge to staging"
+
+    - name: Validate main merge sources
+      if: github.base_ref == 'main'
+      run: |
+        source_branch="${{ github.head_ref }}"
+        if [[ ! $source_branch =~ ^(staging|hotfix/) ]]; then
+          echo "❌ ERROR: main branch can only accept merges from staging or hotfix/* branches"
+          echo "   Source branch: $source_branch"
+          echo "   Allowed patterns: staging, hotfix/*"
+          exit 1
+        fi
+        echo "✅ Valid: $source_branch can merge to main"
+
+    - name: Validate develop merge sources
+      if: github.base_ref == 'develop'
+      run: |
+        source_branch="${{ github.head_ref }}"
+        if [[ ! $source_branch =~ ^(feature/|bugfix/|release/) ]]; then
+          echo "❌ ERROR: develop branch can only accept merges from feature/*, bugfix/*, or release/* branches"
+          echo "   Source branch: $source_branch"
+          echo "   Allowed patterns: feature/*, bugfix/*, release/*"
+          exit 1
+        fi
+        echo "✅ Valid: $source_branch can merge to develop"
+
+    - name: Add validation comment
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `🚫 **Branch Merge Validation Failed**
+            
+            This PR violates our branch merge policies. Please check:
+            - \`staging\` ← only from \`release/*\`
+            - \`main\` ← only from \`staging\` or \`hotfix/*\`
+            - \`develop\` ← only from \`feature/*\`, \`bugfix/*\`, or \`release/*\`
+            
+            Current: \`${{ github.head_ref }}\` → \`${{ github.base_ref }}\``
+          })
