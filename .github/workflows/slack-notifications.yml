@@ -1,0 +1,113 @@
+name: Slack PR Notifications
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_run:
+    workflows: ["Branch Merge Validation"]  # Your workflow names
+    types: [completed]
+    branches: [main, staging, develop]
+
+jobs:
+  notify-pr-merge:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+    - name: Notify Slack - PR Merged Successfully
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            "text": "🎉 PR Merged Successfully!",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.event.pull_request.base.ref }}",
+                    "short": true
+                  },
+                  {
+                    "title": "PR Title",
+                    "value": "${{ github.event.pull_request.title }}",
+                    "short": false
+                  },
+                  {
+                    "title": "Author",
+                    "value": "${{ github.event.pull_request.user.login }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Merged by",
+                    "value": "${{ github.event.pull_request.merged_by.login }}",
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "View PR",
+                    "url": "${{ github.event.pull_request.html_url }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  notify-workflow-failure:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Notify Slack - Workflow Failed
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        custom_payload: |
+          {
+            "text": "❌ Workflow Failed!",
+            "attachments": [
+              {
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.event.workflow_run.head_branch }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow",
+                    "value": "${{ github.event.workflow_run.name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Trigger",
+                    "value": "${{ github.event.workflow_run.event }}",
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "View Workflow",
+                    "url": "${{ github.event.workflow_run.html_url }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
