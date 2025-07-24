@@ -85,7 +85,7 @@ jobs:
                   },
                   {
                     "title": "Description",
-                    "value": "${{ github.event.pull_request.body || 'No description provided' }}",
+                    "value": "${{ github.event.pull_request.body || \"No description provided\" }}",
                     "short": false
                   }
                 ],
