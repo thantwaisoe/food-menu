@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  action: read
 
 jobs:
   notify-pr-opened:
@@ -164,6 +165,55 @@ jobs:
                     "type": "button",
                     "text": "View PR",
                     "url": ${{ toJSON(github.event.pull_request.html_url) }}
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  notify-workflow-failure:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Notify Slack - Workflow Failed
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        custom_payload: |
+          {
+            "text": "❌ Workflow Failed!",
+            "attachments": [
+              {
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": ${{ toJSON(github.repository) }},
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": ${{ toJSON(github.event.workflow_run.head_branch) }},
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow",
+                    "value": ${{ toJSON(github.event.workflow_run.name) }},
+                    "short": true
+                  },
+                  {
+                    "title": "Trigger",
+                    "value": ${{ toJSON(github.event.workflow_run.event) }},
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "View Workflow",
+                    "url": ${{ toJSON(github.event.workflow_run.html_url) }}
                   }
                 ]
               }
