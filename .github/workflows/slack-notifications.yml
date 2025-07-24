@@ -42,6 +42,18 @@ jobs:
           
           return reviewerText || 'No reviewers assigned';
 
+    - name: Process PR description
+      id: description
+      run: |
+        description="${{ github.event.pull_request.body }}"
+        if [ -z "$description" ] || [ "$description" = "null" ]; then
+          echo "result=No description provided" >> $GITHUB_OUTPUT
+        else
+          # Escape any quotes and newlines for JSON
+          escaped_description=$(echo "$description" | sed 's/"/\\"/g' | tr '\n' ' ')
+          echo "result=$escaped_description" >> $GITHUB_OUTPUT
+        fi
+
     - name: Notify Slack - PR Opened
       uses: 8398a7/action-slack@v3
       with:
@@ -85,7 +97,7 @@ jobs:
                   },
                   {
                     "title": "Description",
-                    "value": "${{ github.event.pull_request.body || 'No description provided' }}",
+                    "value": "${{ steps.description.outputs.result }}",
                     "short": false
                   }
                 ],
