@@ -44,13 +44,14 @@ jobs:
 
     - name: Process PR description
       id: description
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
       run: |
-        description="${{ github.event.pull_request.body }}"
-        if [ -z "$description" ] || [ "$description" = "null" ]; then
+        if [ -z "$PR_BODY" ] || [ "$PR_BODY" = "null" ]; then
           echo "result=No description provided" >> $GITHUB_OUTPUT
         else
-          # Escape any quotes and newlines for JSON
-          escaped_description=$(echo "$description" | sed 's/"/\\"/g' | tr '\n' ' ')
+          # Escape any quotes and newlines for JSON, and truncate if too long
+          escaped_description=$(echo "$PR_BODY" | head -c 500 | sed 's/"/\\"/g' | tr '\n' ' ')
           echo "result=$escaped_description" >> $GITHUB_OUTPUT
         fi
 
@@ -95,11 +96,11 @@ jobs:
                     "value": "${{ github.event.pull_request.created_at }}",
                     "short": true
                   },
-                  {
-                    "title": "Description",
-                    "value": "${{ steps.description.outputs.result }}",
-                    "short": false
-                  }
+                  # {
+                  #   "title": "Description",
+                  #   "value": "${{ steps.description.outputs.result }}",
+                  #   "short": false
+                  # }
                 ],
                 "actions": [
                   {
