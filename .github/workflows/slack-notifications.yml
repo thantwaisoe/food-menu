@@ -2,13 +2,111 @@ name: Slack PR Notifications
 
 on:
   pull_request:
-    types: [closed]
+    types: [opened, reopened, closed]
   workflow_run:
-    workflows: ["Branch Merge Validation"]  # Your workflow names
+    workflows: ["Branch Merge Validation"]
     types: [completed]
     branches: [main, staging, develop]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  notify-pr-opened:
+    if: github.event.action == 'opened' || github.event.action == 'reopened'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get PR reviewers
+      id: reviewers
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pr } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+          
+          const reviewers = pr.requested_reviewers?.map(r => r.login) || [];
+          const teamReviewers = pr.requested_teams?.map(t => t.name) || [];
+          
+          let reviewerText = '';
+          if (reviewers.length > 0) {
+            reviewerText = reviewers.join(', ');
+          }
+          if (teamReviewers.length > 0) {
+            const teams = teamReviewers.map(team => `@${team}`).join(', ');
+            reviewerText = reviewerText ? `${reviewerText}, ${teams}` : teams;
+          }
+          
+          return reviewerText || 'No reviewers assigned';
+
+    - name: Notify Slack - PR Opened
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            "text": "🔔 New Pull Request Opened!",
+            "attachments": [
+              {
+                "color": "#36a64f",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "PR #${{ github.event.pull_request.number }}",
+                    "value": "${{ github.event.pull_request.title }}",
+                    "short": false
+                  },
+                  {
+                    "title": "Author",
+                    "value": "${{ github.event.pull_request.user.login }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Reviewers",
+                    "value": "${{ steps.reviewers.outputs.result }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Created",
+                    "value": "${{ github.event.pull_request.created_at }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Description",
+                    "value": "${{ github.event.pull_request.body || 'No description provided' }}",
+                    "short": false
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "📝 Review PR",
+                    "url": "${{ github.event.pull_request.html_url }}"
+                  },
+                  {
+                    "type": "button",
+                    "text": "📋 View Files",
+                    "url": "${{ github.event.pull_request.html_url }}/files"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   notify-pr-merge:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
