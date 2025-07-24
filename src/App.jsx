@@ -13,6 +13,9 @@ export default function App() {
       {favorite&& favorite.length> 0 && <Favorites/>}
       <Meals />
      {showModal &&  <Modal /> }
+      <footer>
+        <p>© 2023 Foodie App</p>
+      </footer>
 
     </main>
   )
