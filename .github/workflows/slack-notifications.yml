@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  action: read
+  actions: read
 
 jobs:
   notify-pr-opened:
