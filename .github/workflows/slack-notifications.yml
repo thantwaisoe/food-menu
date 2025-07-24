@@ -3,10 +3,6 @@ name: Slack PR Notifications
 on:
   pull_request:
     types: [opened, reopened, closed]
-  workflow_run:
-    workflows: ["Branch Merge Validation"]
-    types: [completed]
-    branches: [main, staging, develop]
 
 permissions:
   contents: read
@@ -40,17 +36,20 @@ jobs:
             reviewerText = reviewerText ? `${reviewerText}, ${teams}` : teams;
           }
           
-          return reviewerText || 'No reviewers assigned';
+          const result = reviewerText || 'No reviewers assigned';
+          core.setOutput('result', result);
+          return result;
 
     - name: Process PR description
       id: description
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
       run: |
-        description="${{ github.event.pull_request.body }}"
-        if [ -z "$description" ] || [ "$description" = "null" ]; then
+        if [ -z "$PR_BODY" ] || [ "$PR_BODY" = "null" ]; then
           echo "result=No description provided" >> $GITHUB_OUTPUT
         else
-          # Escape any quotes and newlines for JSON
-          escaped_description=$(echo "$description" | sed 's/"/\\"/g' | tr '\n' ' ')
+          # Escape any quotes and newlines for JSON, and truncate if too long
+          escaped_description=$(echo "$PR_BODY" | head -c 500 | sed 's/"/\\"/g' | tr '\n' ' ')
           echo "result=$escaped_description" >> $GITHUB_OUTPUT
         fi
 
@@ -67,37 +66,37 @@ jobs:
                 "fields": [
                   {
                     "title": "Repository",
-                    "value": "${{ github.repository }}",
+                    "value": ${{ toJSON(github.repository) }},
                     "short": true
                   },
                   {
                     "title": "PR #${{ github.event.pull_request.number }}",
-                    "value": "${{ github.event.pull_request.title }}",
+                    "value": ${{ toJSON(github.event.pull_request.title) }},
                     "short": false
                   },
                   {
                     "title": "Author",
-                    "value": "${{ github.event.pull_request.user.login }}",
+                    "value": ${{ toJSON(github.event.pull_request.user.login) }},
                     "short": true
                   },
                   {
                     "title": "Reviewers",
-                    "value": "${{ steps.reviewers.outputs.result }}",
+                    "value": ${{ toJSON(steps.reviewers.outputs.result) }},
                     "short": true
                   },
                   {
                     "title": "Branch",
-                    "value": "${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}",
+                    "value": ${{ toJSON(format('{0} → {1}', github.event.pull_request.head.ref, github.event.pull_request.base.ref)) }},
                     "short": true
                   },
                   {
                     "title": "Created",
-                    "value": "${{ github.event.pull_request.created_at }}",
+                    "value": ${{ toJSON(github.event.pull_request.created_at) }},
                     "short": true
                   },
                   {
                     "title": "Description",
-                    "value": "${{ steps.description.outputs.result }}",
+                    "value": ${{ toJSON(steps.description.outputs.result) }},
                     "short": false
                   }
                 ],
@@ -105,12 +104,12 @@ jobs:
                   {
                     "type": "button",
                     "text": "📝 Review PR",
-                    "url": "${{ github.event.pull_request.html_url }}"
+                    "url": ${{ toJSON(github.event.pull_request.html_url) }}
                   },
                   {
                     "type": "button",
                     "text": "📋 View Files",
-                    "url": "${{ github.event.pull_request.html_url }}/files"
+                    "url": ${{ toJSON(format('{0}/files', github.event.pull_request.html_url)) }}
                   }
                 ]
               }
@@ -136,27 +135,27 @@ jobs:
                 "fields": [
                   {
                     "title": "Repository",
-                    "value": "${{ github.repository }}",
+                    "value": ${{ toJSON(github.repository) }},
                     "short": true
                   },
                   {
                     "title": "Branch",
-                    "value": "${{ github.event.pull_request.base.ref }}",
+                    "value": ${{ toJSON(github.event.pull_request.base.ref) }},
                     "short": true
                   },
                   {
                     "title": "PR Title",
-                    "value": "${{ github.event.pull_request.title }}",
+                    "value": ${{ toJSON(github.event.pull_request.title) }},
                     "short": false
                   },
                   {
                     "title": "Author",
-                    "value": "${{ github.event.pull_request.user.login }}",
+                    "value": ${{ toJSON(github.event.pull_request.user.login) }},
                     "short": true
                   },
                   {
                     "title": "Merged by",
-                    "value": "${{ github.event.pull_request.merged_by.login }}",
+                    "value": ${{ toJSON(github.event.pull_request.merged_by.login) }},
                     "short": true
                   }
                 ],
@@ -164,56 +163,7 @@ jobs:
                   {
                     "type": "button",
                     "text": "View PR",
-                    "url": "${{ github.event.pull_request.html_url }}"
-                  }
-                ]
-              }
-            ]
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  notify-workflow-failure:
-    if: github.event.workflow_run.conclusion == 'failure'
-    runs-on: ubuntu-latest
-    steps:
-    - name: Notify Slack - Workflow Failed
-      uses: 8398a7/action-slack@v3
-      with:
-        status: failure
-        custom_payload: |
-          {
-            "text": "❌ Workflow Failed!",
-            "attachments": [
-              {
-                "color": "danger",
-                "fields": [
-                  {
-                    "title": "Repository",
-                    "value": "${{ github.repository }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Branch",
-                    "value": "${{ github.event.workflow_run.head_branch }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Workflow",
-                    "value": "${{ github.event.workflow_run.name }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Trigger",
-                    "value": "${{ github.event.workflow_run.event }}",
-                    "short": true
-                  }
-                ],
-                "actions": [
-                  {
-                    "type": "button",
-                    "text": "View Workflow",
-                    "url": "${{ github.event.workflow_run.html_url }}"
+                    "url": ${{ toJSON(github.event.pull_request.html_url) }}
                   }
                 ]
               }
