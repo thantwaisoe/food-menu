@@ -3,9 +3,6 @@ name: Slack PR Notifications
 on:
   pull_request:
     types: [opened, reopened, closed]
-  workflow_run:
-    workflows: ["Branch Merge Validation"]
-    types: [completed]
 
 permissions:
   contents: read

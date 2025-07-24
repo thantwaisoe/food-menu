@@ -17,10 +17,10 @@ jobs:
       if: github.base_ref == 'staging'
       run: |
         source_branch="${{ github.head_ref }}"
-        if [[ ! $source_branch =~ ^release/ ]]; then
-          echo "❌ ERROR: staging branch can only accept merges from release/* branches"
+        if [[ ! $source_branch =~ ^develop$ ]]; then
+          echo "❌ ERROR: staging branch can only accept merges from develop branch"
           echo "   Source branch: $source_branch"
-          echo "   Allowed patterns: release/*"
+          echo "   Allowed patterns: develop"
           exit 1
         fi
         echo "✅ Valid: $source_branch can merge to staging"
@@ -29,10 +29,10 @@ jobs:
       if: github.base_ref == 'main'
       run: |
         source_branch="${{ github.head_ref }}"
-        if [[ ! $source_branch =~ ^(staging|hotfix/) ]]; then
-          echo "❌ ERROR: main branch can only accept merges from staging or hotfix/* branches"
+        if [[ ! $source_branch =~ ^(staging|hot-fix/) ]]; then
+          echo "❌ ERROR: main branch can only accept merges from staging or hot-fix/* branches"
           echo "   Source branch: $source_branch"
-          echo "   Allowed patterns: staging, hotfix/*"
+          echo "   Allowed patterns: staging, hot-fix/*"
           exit 1
         fi
         echo "✅ Valid: $source_branch can merge to main"
@@ -41,10 +41,10 @@ jobs:
       if: github.base_ref == 'develop'
       run: |
         source_branch="${{ github.head_ref }}"
-        if [[ ! $source_branch =~ ^(feature/|bugfix/|release/) ]]; then
-          echo "❌ ERROR: develop branch can only accept merges from feature/*, bugfix/*, or release/* branches"
+        if [[ ! $source_branch =~ ^(feature/|hot-fix/) ]]; then
+          echo "❌ ERROR: develop branch can only accept merges from feature/* or hot-fix/* branches"
           echo "   Source branch: $source_branch"
-          echo "   Allowed patterns: feature/*, bugfix/*, release/*"
+          echo "   Allowed patterns: feature/*, hot-fix/*"
           exit 1
         fi
         echo "✅ Valid: $source_branch can merge to develop"
@@ -61,9 +61,126 @@ jobs:
             body: `🚫 **Branch Merge Validation Failed**
             
             This PR violates our branch merge policies. Please check:
-            - \`staging\` ← only from \`release/*\`
-            - \`main\` ← only from \`staging\` or \`hotfix/*\`
-            - \`develop\` ← only from \`feature/*\`, \`bugfix/*\`, or \`release/*\`
+            - \`develop\` ← only from \`feature/*\` or \`hot-fix/*\`
+            - \`staging\` ← only from \`develop\`
+            - \`main\` ← only from \`staging\` or \`hot-fix/*\`
             
             Current: \`${{ github.head_ref }}\` → \`${{ github.base_ref }}\``
           })
+
+    - name: Notify Slack on validation failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        custom_payload: |
+          {
+            "text": "🚫 Branch Merge Validation Failed!",
+            "attachments": [
+              {
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": ${{ toJSON(github.repository) }},
+                    "short": true
+                  },
+                  {
+                    "title": "PR #${{ github.event.pull_request.number }}",
+                    "value": ${{ toJSON(github.event.pull_request.title) }},
+                    "short": false
+                  },
+                  {
+                    "title": "Author",
+                    "value": ${{ toJSON(github.event.pull_request.user.login) }},
+                    "short": true
+                  },
+                  {
+                    "title": "Invalid Branch Pattern",
+                    "value": ${{ toJSON(format('{0} → {1}', github.head_ref, github.base_ref)) }},
+                    "short": true
+                  },
+                  {
+                    "title": "Validation Rule",
+                    "value": ${{ toJSON(
+                      github.base_ref == 'develop' && '`develop` ← only from `feature/*` or `hot-fix/*`' ||
+                      github.base_ref == 'staging' && '`staging` ← only from `develop`' ||
+                      github.base_ref == 'main' && '`main` ← only from `staging` or `hot-fix/*`' ||
+                      'Unknown branch validation rule'
+                    ) }},
+                    "short": false
+                  },
+                  {
+                    "title": "Failed At",
+                    "value": ${{ toJSON(github.event.pull_request.updated_at) }},
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "🔧 Fix PR",
+                    "url": ${{ toJSON(github.event.pull_request.html_url) }}
+                  },
+                  {
+                    "type": "button",
+                    "text": "📋 View Files",
+                    "url": ${{ toJSON(format('{0}/files', github.event.pull_request.html_url)) }}
+                  },
+                  {
+                    "type": "button",
+                    "text": "📊 View Workflow",
+                    "url": ${{ toJSON(format('{0}/actions', github.event.repository.html_url)) }}
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify Slack on successful validation
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        custom_payload: |
+          {
+            "text": "✅ Branch Merge Validation Passed!",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": ${{ toJSON(github.repository) }},
+                    "short": true
+                  },
+                  {
+                    "title": "PR #${{ github.event.pull_request.number }}",
+                    "value": ${{ toJSON(github.event.pull_request.title) }},
+                    "short": false
+                  },
+                  {
+                    "title": "Author",
+                    "value": ${{ toJSON(github.event.pull_request.user.login) }},
+                    "short": true
+                  },
+                  {
+                    "title": "Valid Branch Pattern",
+                    "value": ${{ toJSON(format('{0} → {1}', github.head_ref, github.base_ref)) }},
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "📝 Review PR",
+                    "url": ${{ toJSON(github.event.pull_request.html_url) }}
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
